@@ -409,7 +409,7 @@ class BestFitPlotConfig:
     color_fit: str = 'black'
     color_residuals: str = "#2C2C2C"
     linewidth: float = 1.0
-    zorder: int = 100
+    zorder: int = 200
 
     @property
     def to_dict(self) -> dict:
