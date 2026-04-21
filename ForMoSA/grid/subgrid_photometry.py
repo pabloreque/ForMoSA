@@ -368,8 +368,8 @@ class SubGridPhotometry(SubGrid):
             )
 
             # integration
-            numerator = np.trapz(flux_model * trans_interp, wave_model)
-            denominator = np.trapz(trans_interp, wave_model)
+            numerator = np.trapezoid(flux_model * trans_interp, wave_model)
+            denominator = np.trapezoid(trans_interp, wave_model)
 
             if denominator == 0:
                 flux = np.nan
