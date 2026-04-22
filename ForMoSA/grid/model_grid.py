@@ -375,17 +375,13 @@ class ModelGrid:
         Authors: Allan Denis
         '''
 
-        # ref_params = {k: 0.5 * (self.lims_params_grid[k][0] + self.lims_params_grid[k][1]) for k in self.keys}
-        ref_params = {
-            k: [float(0.5 * (self.lims_params_grid[k][0] + self.lims_params_grid[k][1]))]
-            for k in self.keys}
-        
+        ref_params = {k: 0.5 * (self.lims_params_grid[k][0] + self.lims_params_grid[k][1]) for k in self.keys}
+
         interp_kwargs = dict(ref_params)
         interp_kwargs["method"] = "nearest"
         interp_kwargs["kwargs"] = {"fill_value": np.nan}
 
-        # grid_1d = self._grid.interp(**interp_kwargs)
-        grid_1d = self._grid.interp(**interp_kwargs).squeeze()
+        grid_1d = self._grid.interp(**interp_kwargs)
 
         # Replace values by nans
         return grid_1d * np.nan
