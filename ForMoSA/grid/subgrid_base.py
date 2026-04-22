@@ -420,25 +420,19 @@ class SubGrid(ModelGrid, ABC):
         # Parallel loop
         try:
             ncpu = mp.cpu_count()
-            async_results = []
             with ThreadPool(processes=ncpu) as pool:
                 for idx in np.ndindex(shape):
                     callback = partial(update_result, idx=idx)
                     model_to_adapt = restricted_grid._load_model_at_specific_index(idx)
-                    ar = pool.apply_async(self._adapt_model, args=(model_to_adapt,), callback=callback)
-                    async_results.append(ar)
+                    pool.apply_async(self._adapt_model, args=(model_to_adapt,), callback=callback)
                 pool.close()
                 pool.join()
-
-            # Force worker exceptions to be raised here
-            for ar in async_results:
-                ar.get()
 
         except Exception as e:
             self._logger.warning(f"<Parallel adaptation failed: {e}. Falling back to serial mode>")
             # Non parallel loop
             try:
-                for idx in tqdm(np.ndindex(shape), total=np.prod(shape)):
+                for idx in tqdm(np.ndindex(shape)):
                     model_to_adapt = restricted_grid._load_model_at_specific_index(idx)
                     result = self._adapt_model(model_to_adapt)
                     self._grid.grid[(..., ) + idx] = result
