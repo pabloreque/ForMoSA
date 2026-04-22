@@ -162,8 +162,6 @@ class SpectralPlotConfig(ObsPlotConfig):
     color: str = "#7A1E22"
     marker: str = "None"
 
-SPECTRAL_PLOT = SpectralPlotConfig()
-
 # ==================================================
 # Photometric plotting configuration
 # ==================================================
@@ -184,8 +182,6 @@ class PhotometricPlotConfig(ObsPlotConfig):
 
     label_filter: bool = False
     label_data: bool = True
-
-PHOTOMETRIC_PLOT = PhotometricPlotConfig()
 
 # ==================================================
 # CornerPlot plotting configuration
