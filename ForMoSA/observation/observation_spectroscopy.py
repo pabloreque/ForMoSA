@@ -279,7 +279,7 @@ class SpectralObservation(Observation):
 
         # Systematics
         if self.system is not None:
-            if self(self.system) != self.n_points:
+            if len(self.system) != self.n_points:
                 raise ForMoSAError('Systematics must have same length as wave', self.logger)
 
     def _clean_nans(self) -> None:
