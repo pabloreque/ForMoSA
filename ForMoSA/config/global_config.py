@@ -491,7 +491,7 @@ class ConfigParameters:
             elif prior_type == PriorType.UNIFORM:
                 prior = Prior.UniformPrior(value[1].strip(), value[2].strip())
             elif prior_type == PriorType.LOG_UNIFORM:
-                prior = Prior.UniformPrior(value[1].strip(), value[2].strip())
+                prior = Prior.LogUniformPrior(value[1].strip(), value[2].strip())
             else:
                 prior = Prior.GaussianPrior(value[1].strip(), value[2].strip())
 
