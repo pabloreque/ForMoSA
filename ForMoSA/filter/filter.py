@@ -15,6 +15,7 @@ from ForMoSA.core.enums import WavelengthUnit
 from ForMoSA.core.loggings import setup_logging
 from astropy.table import Table, MaskedColumn, Column
 from ForMoSA.core.config import  MainPlotConfig, MAIN_PLOT, PhotometricPlotConfig
+import ForMoSA.core.config as config
 
 import ForMoSA.core.config as config
 
@@ -74,6 +75,20 @@ class PhotometryFilter(object):
 
     def __format__(self) -> str:
         return self.__repr__()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        level_int = self._logger.level
+        state['__pickle_log_level'] = 'OFF' if level_int >= 100 else logging.getLevelName(level_int)
+        state['__pickle_log_name'] = self._logger.name.removeprefix('ForMoSA.')
+        state['_logger'] = None
+        return state
+
+    def __setstate__(self, state):
+        log_level = state.pop('__pickle_log_level', 'INFO')
+        log_name = state.pop('__pickle_log_name', __name__)
+        self.__dict__.update(state)
+        self._logger = setup_logging(level=log_level, name=log_name)
 
     # ===============================================
     # Properties

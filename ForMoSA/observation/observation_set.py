@@ -690,7 +690,7 @@ class ObservationSet(object):
         if ax_filt is not None:
             filt_handles, filt_labels = ax_filt.get_legend_handles_labels()
             if filt_handles:
-                ax_filt.legend(ncol=max(1, int(main_plot_config.legend_filt_ncol)),frameon=False,)
+                ax_filt.legend(ncol=max(1, int(main_plot_config.legend_filt_ncol)), frameon=False)
 
         # Minor ticks
         if main_plot_config.minor_ticks:
