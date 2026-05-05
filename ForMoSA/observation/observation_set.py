@@ -479,6 +479,17 @@ class ObservationSet(object):
         else:
             raise ForMoSAError('No valid data provided to add an observation', self.logger)
 
+        existing_names = {observation.name for observation in self._observations}
+
+        if obs.name in existing_names:
+            base_name = obs.name
+            idx = 0
+
+            while f"{base_name}_{idx}" in existing_names:
+                idx += 1
+
+            obs._name = f"{base_name}_{idx}"
+
         self.logger.info(f'      Adding {obs.ObsType} Observation with name {obs.name} to the set of observations')
         self._observations.append(obs)
 

@@ -71,6 +71,7 @@ class SpectralObservation(Observation):
         self._star_flux_cont = None
         self._res_cont = None
         self._wave_cont = None
+        self._name: str | None = None
 
         self._clean_nans()
         self._validate_spectral()
@@ -199,6 +200,9 @@ class SpectralObservation(Observation):
     @property
     def name(self) -> str:
         """Observation name."""
+        if self._name is not None:
+            return self._name
+
         # ---- Facilities
         facilities = sorted(set(self.facility.astype(str)))
         facility_str = f'[{"+".join(facilities)}]'

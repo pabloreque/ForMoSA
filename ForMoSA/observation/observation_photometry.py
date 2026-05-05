@@ -51,6 +51,7 @@ class PhotometryObservation(Observation):
         super().__init__(wave=wave, flux=flux, err=err, facility=facility, instrument=instrument, native_unit=native_unit, logger=logger, log_level=log_level, display_unit=display_unit, plot_config=PhotometricPlotConfig())
 
         self._Filter = np.array([])
+        self._name: str | None = None
 
         self._validate_photometry()
 
@@ -109,6 +110,9 @@ class PhotometryObservation(Observation):
     @property
     def name(self) -> str:
         """Observation name."""
+        if self._name is not None:
+            return self._name
+
         # ---- Facilities
         facilities = sorted(set(self.facility.astype(str)))
         facility_str = f'[{"+".join(facilities)}]'
