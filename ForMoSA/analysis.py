@@ -94,9 +94,10 @@ class Analysis(object):
             except ForMoSAError as e:
                 raise ForMoSAError(f'Recovering NestedSampling from path {self.paths.result_path} produced the following error: {e}. You probably want to fit your data first (set fitted to False)', self._logger)
 
-        # Update configurations for plotting
-        for obs in self._observations:
-            obs.plot_config.set_plot_config(color=obs.plot_config.cmap(self._observations.mcolors_normalize(obs.central_wavelength)))
+        # Update configurations for plotting (in case there is more than one observation)
+        if len(self._observations) > 1:
+            for obs in self._observations:
+                obs.plot_config.set_plot_config(color=obs.plot_config.cmap(self._observations.mcolors_normalize(obs.central_wavelength)))
 
         # Propagate the computed colors to restricted_observations.
         # These are deep-copied from self._observations before the loop above,
@@ -107,7 +108,7 @@ class Analysis(object):
                 if obs.name in color_by_name:
                     obs.plot_config.set_plot_config(color=color_by_name[obs.name])
 
-        # Upade main plot configuration
+        # Update main plot configuration
         MAIN_PLOT.legend_ncol = max(1, (np.sum(
             [obs.nb_filters for obs in self.observations.photometry_observations])
             + np.sum([obs.nb_instruments for obs in self.observations.spectral_observations])
