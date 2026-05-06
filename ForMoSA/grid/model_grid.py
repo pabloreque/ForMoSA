@@ -497,7 +497,11 @@ class ModelGrid:
         self.logger.info(f"    Saving Grid {self.suffix}_{self.grid_name}.nc to {store_path}")
 
         filename = f"{self.suffix}_{self.grid_name}.nc"
-        self.grid.to_netcdf(store_path / filename, format="NETCDF4", engine="netcdf4", mode="w")
+        grid_to_save = self.grid.copy(deep=False)
+        grid_to_save.attrs = { key: value for key, value in grid_to_save.attrs.items() if value is not None}
+        for variable in grid_to_save.variables.values():
+            variable.attrs = { key: value for key, value in variable.attrs.items() if value is not None }
+        grid_to_save.to_netcdf(store_path / filename, format="NETCDF4", engine="netcdf4", mode="w")
 
     def _load_grid(self, store_path: str | os.PathLike, grid_name: str = 'in-memory-grid', suffix: str = 'native') -> xr.Dataset:
         '''
