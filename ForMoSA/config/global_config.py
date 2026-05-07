@@ -389,7 +389,6 @@ class ConfigParameters:
     par2: list[str] = field(default_factory=lambda: ["NA"])
     par3: list[str] = field(default_factory=lambda: ["NA"])
     par4: list[str] = field(default_factory=lambda: ["NA"])
-    par5: list[str] = field(default_factory=lambda: ["NA"])
     r: list[str] = field(default_factory=lambda: ["NA"])
     d: list[str] = field(default_factory=lambda: ["NA"])
     alpha: list[str] = field(default_factory=lambda: ["NA"])
@@ -1201,7 +1200,6 @@ class ConfigGenerator:
             "par2": [],
             "par3": [],
             "par4": [],
-            "par5": [],
             "r": [
                 "    # Definition of the prior function of each extra-grid parameter. Check prior functions for more infos",
                 "    # Format : 'function', function_param1, function_param2",
