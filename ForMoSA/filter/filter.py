@@ -17,8 +17,6 @@ from astropy.table import Table, MaskedColumn, Column
 from ForMoSA.core.config import  MainPlotConfig, MAIN_PLOT, PhotometricPlotConfig
 import ForMoSA.core.config as config
 
-import ForMoSA.core.config as config
-
 class PhotometryFilter(object):
     '''
     PhotometryFilter class Defining a filter.
