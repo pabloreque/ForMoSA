@@ -5,6 +5,7 @@ from ForMoSA.config.paths import Paths
 from ForMoSA.core.errors import ForMoSAError
 from ForMoSA.grid.model_grid import ModelGrid
 from ForMoSA.core.loggings import setup_logging
+from ForMoSA.grid.subgrid_base import SubGrid
 from ForMoSA.grid.subgrid_set import SubGridSet
 from ForMoSA.filter.filter import PhotometryFilter
 from ForMoSA.nested_sampling.results import NSResults
@@ -18,6 +19,70 @@ from ForMoSA.grid.subgrid_spectroscopy import SubGridSpectroscopy
 from ForMoSA.nested_sampling.nested_sampling import NestedSampling
 from ForMoSA.core.enums import ObservationType, NestedAlgorithm, LogLikelihoodType
 from ForMoSA.config.global_config import ConfigPath, ConfigAdapt, ConfigInversion, ConfigParameters, Config_NS
+
+
+def _arrays_equivalent(a: np.ndarray | None, b: np.ndarray | None) -> bool:
+    """Strict equivalence check for adaptation-defining arrays."""
+
+    if a is None or b is None:
+        return a is b
+
+    a_array = np.asarray(a)
+    b_array = np.asarray(b)
+
+    if a_array.shape != b_array.shape:
+        return False
+
+    return bool(np.allclose(a_array, b_array, rtol=1e-12, atol=1e-12, equal_nan=True))
+
+
+def _values_equivalent(a, b) -> bool:
+    """Equivalence check for scalar or array-like adaptation metadata."""
+
+    if a is None or b is None:
+        return a is b
+
+    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+        return _arrays_equivalent(a, b)
+
+    try:
+        return bool(np.allclose(np.asarray(a, dtype=float), np.asarray(b, dtype=float), rtol=1e-12, atol=1e-12, equal_nan=True))
+    except (TypeError, ValueError):
+        return a == b
+
+
+def _subgrid_reuse_signatures_equivalent(signature_a: dict, signature_b: dict) -> bool:
+    """Compare two local Analysis.adapt subgrid reuse signatures."""
+
+    if signature_a["obs_type"] != signature_b["obs_type"]:
+        return False
+
+    if signature_a["parent_grid_id"] != signature_b["parent_grid_id"]:
+        return False
+
+    if signature_a["obs_type"] == ObservationType.SPECTROSCOPIC.obstype:
+        return (
+            _arrays_equivalent(signature_a["target_wave"], signature_b["target_wave"])
+            and _arrays_equivalent(signature_a["target_res"], signature_b["target_res"])
+            and signature_a["remove_continuum"] == signature_b["remove_continuum"]
+            and _values_equivalent(signature_a["wave_cont"], signature_b["wave_cont"])
+            and _values_equivalent(signature_a["res_cont"], signature_b["res_cont"])
+        )
+
+    if signature_a["obs_type"] == ObservationType.PHOTOMETRIC.obstype:
+        return signature_a["filters"] == signature_b["filters"]
+
+    return False
+
+
+def _find_reusable_subgrid(signature: dict, cache: list[tuple[dict, SubGrid, str]]) -> tuple[SubGrid, str] | None:
+    """Find a cached adapted subgrid with an equivalent adaptation signature."""
+
+    for cached_signature, cached_subgrid, cached_obs_name in cache:
+        if _subgrid_reuse_signatures_equivalent(signature, cached_signature):
+            return cached_subgrid, cached_obs_name
+
+    return None
 
 
 class Analysis(object):
@@ -248,22 +313,93 @@ class Analysis(object):
                 # Adapt subgrids
                 # ==================
 
-                # Loop in observations
-                for obs, wave, res, remove_cont in zip(self.observations.observations, target_wave, target_res, remove_continuum):
-                    # Spectroscopic observation
-                    if obs.ObsType == ObservationType.SPECTROSCOPIC.obstype:
-                        subgrid = SubGridSpectroscopy.from_parent(parent_grid = self.grid, target_wavelength=wave, target_resolution=res, name = obs.name, logger = self.logger, remove_continuum=remove_cont, res_cont=obs._res_cont, wave_cont=obs._wave_cont, backend=config_adapt.backend, n_jobs=config_adapt.n_jobs)
-                    # Photometric observation
-                    elif obs.ObsType == ObservationType.PHOTOMETRIC.obstype:
-                        Filter_list = []
-                        for facility, instrument, filter_id in zip(obs.facility, obs.instrument, obs.filter_id):
-                            Filter_list.append(PhotometryFilter(facility, instrument, filter_id))
-                        subgrid = SubGridPhotometry.from_parent(parent_grid = self.grid, Filter = Filter_list, name = obs.name, logger = self.logger, backend=config_adapt.backend, n_jobs=config_adapt.n_jobs)
-                    # Unknown type
-                    else:
-                        raise ForMoSAError(f'Unknown ObservationType: {obs.ObsType}')
+                if not config_adapt.reuse_identical_subgrids:
+                    # Loop in observations
+                    for obs, wave, res, remove_cont in zip(self.observations.observations, target_wave, target_res, remove_continuum):
+                        # Spectroscopic observation
+                        if obs.ObsType == ObservationType.SPECTROSCOPIC.obstype:
+                            subgrid = SubGridSpectroscopy.from_parent(parent_grid = self.grid, target_wavelength=wave, target_resolution=res, name = obs.name, logger = self.logger, remove_continuum=remove_cont, res_cont=obs._res_cont, wave_cont=obs._wave_cont, backend=config_adapt.backend, n_jobs=config_adapt.n_jobs)
+                        # Photometric observation
+                        elif obs.ObsType == ObservationType.PHOTOMETRIC.obstype:
+                            Filter_list = []
+                            for facility, instrument, filter_id in zip(obs.facility, obs.instrument, obs.filter_id):
+                                Filter_list.append(PhotometryFilter(facility, instrument, filter_id))
+                            subgrid = SubGridPhotometry.from_parent(parent_grid = self.grid, Filter = Filter_list, name = obs.name, logger = self.logger, backend=config_adapt.backend, n_jobs=config_adapt.n_jobs)
+                        # Unknown type
+                        else:
+                            raise ForMoSAError(f'Unknown ObservationType: {obs.ObsType}')
 
-                    subgrid_set.add_subgrid(subgrid)
+                        subgrid_set.add_subgrid(subgrid)
+
+                else:
+                    subgrid_cache = []
+                    canonical_subgrid_set = SubGridSet(self.grid, logger=self.logger)
+                    observation_subgrid_map = []
+
+                    # Loop in observations
+                    for obs, wave, res, remove_cont in zip(self.observations.observations, target_wave, target_res, remove_continuum):
+                        # Spectroscopic observation
+                        if obs.ObsType == ObservationType.SPECTROSCOPIC.obstype:
+                            signature = {
+                                "obs_type": obs.ObsType,
+                                "parent_grid_id": id(self.grid),
+                                "target_wave": np.asarray(wave, dtype=float).copy(),
+                                "target_res": np.asarray(res, dtype=float).copy(),
+                                "remove_continuum": bool(remove_cont),
+                                "wave_cont": obs._wave_cont,
+                                "res_cont": obs._res_cont,
+                            }
+                            reusable = _find_reusable_subgrid(signature, subgrid_cache)
+
+                            if reusable is None:
+                                self._logger.info(f'    Computing new adapted subgrid for observation {obs.name}')
+                                subgrid = SubGridSpectroscopy.from_parent(parent_grid = self.grid, target_wavelength=wave, target_resolution=res, name = obs.name, logger = self.logger, remove_continuum=remove_cont, res_cont=obs._res_cont, wave_cont=obs._wave_cont, backend=config_adapt.backend, n_jobs=config_adapt.n_jobs)
+                                subgrid_cache.append((signature, subgrid, obs.name))
+                                canonical_subgrid_set.add_subgrid(subgrid)
+                            else:
+                                reusable_subgrid, reusable_obs_name = reusable
+                                self._logger.info(f'    Reusing adapted subgrid computed for observation {reusable_obs_name} for observation {obs.name} without copying grid data')
+                                subgrid = reusable_subgrid
+
+                        # Photometric observation
+                        elif obs.ObsType == ObservationType.PHOTOMETRIC.obstype:
+                            Filter_list = []
+                            filter_signature = []
+                            for facility, instrument, filter_id in zip(obs.facility, obs.instrument, obs.filter_id):
+                                Filter_list.append(PhotometryFilter(facility, instrument, filter_id))
+                                filter_signature.append((str(facility), str(instrument), str(filter_id)))
+
+                            signature = {
+                                "obs_type": obs.ObsType,
+                                "parent_grid_id": id(self.grid),
+                                "filters": tuple(filter_signature),
+                            }
+                            reusable = _find_reusable_subgrid(signature, subgrid_cache)
+
+                            if reusable is None:
+                                self._logger.info(f'    Computing new adapted subgrid for observation {obs.name}')
+                                subgrid = SubGridPhotometry.from_parent(parent_grid = self.grid, Filter = Filter_list, name = obs.name, logger = self.logger, backend=config_adapt.backend, n_jobs=config_adapt.n_jobs)
+                                subgrid_cache.append((signature, subgrid, obs.name))
+                                canonical_subgrid_set.add_subgrid(subgrid)
+                            else:
+                                reusable_subgrid, reusable_obs_name = reusable
+                                self._logger.info(f'    Reusing adapted subgrid computed for observation {reusable_obs_name} for observation {obs.name} without copying grid data')
+                                subgrid = reusable_subgrid
+
+                        # Unknown type
+                        else:
+                            raise ForMoSAError(f'Unknown ObservationType: {obs.ObsType}')
+
+                        observation_subgrid_map.append((obs.name, subgrid))
+
+                    self._logger.info(f'    Set of unique subgrids generated: {canonical_subgrid_set.subgrid_names}')
+                    canonical_subgrid_set.interpolate_all(config_adapt.method)
+
+                    for obs_name, canonical_subgrid in observation_subgrid_map:
+                        if canonical_subgrid.name == obs_name:
+                            subgrid_set.add_subgrid(canonical_subgrid)
+                        else:
+                            subgrid_set.add_subgrid(canonical_subgrid.clone_with_name(obs_name))
 
             except ForMoSAError as e:
                 raise ForMoSAError(e, self.logger)
@@ -271,8 +407,9 @@ class Analysis(object):
             self._logger.info(f'    Set of subgrids generated: {subgrid_set.subgrid_names}')
             self._subgrids = subgrid_set
 
-            # Interpolate mmissing values in the subgrids
-            self.subgrids.interpolate_all(config_adapt.method)
+            # Interpolate missing values in the subgrids
+            if not config_adapt.reuse_identical_subgrids:
+                self.subgrids.interpolate_all(config_adapt.method)
 
             # Save all the subgrids
             self.subgrids.save_all(self.paths.adapt_store_path)

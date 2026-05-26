@@ -1,4 +1,5 @@
 import os
+import copy
 import logging
 import traceback
 import numpy as np
@@ -264,6 +265,28 @@ class SubGrid(ModelGrid, ABC):
     def is_photometric(self) -> bool:
         """Whether subgrid is photometric."""
         return self.GridType == ObservationType.PHOTOMETRIC.obstype
+
+    def clone_with_name(self, name: str, deep_data: bool = False) -> 'SubGrid':
+        '''
+        Clone this subgrid and expose it under a new observation name.
+
+        By default the xarray Dataset container is copied shallowly: metadata
+        can diverge per clone while the numerical arrays stay shared. Set
+        ``deep_data=True`` to copy the underlying data arrays too.
+        '''
+
+        if not isinstance(name, str):
+            raise ForMoSAError(f'Wrong type for name: {type(name)}. Expected a string', self.logger)
+        if not isinstance(deep_data, bool):
+            raise ForMoSAError(f'Wrong type for deep_data: {type(deep_data)}. Expected a boolean', self.logger)
+
+        clone = copy.copy(self)
+        clone._name = name
+        clone._parent_grid = self.parent_grid
+        clone._grid = self.grid.copy(deep=deep_data)
+        clone._grid.attrs['name'] = name
+
+        return clone
 
     # ==========================
     # Class methods

@@ -86,6 +86,7 @@ class ConfigAdapt:
     res_cont: list[Union[str, float]] = field(default_factory=lambda: ["NA"])
     backend: str = "loky"
     n_jobs: int = -1
+    reuse_identical_subgrids: bool = False
 
     def __post_init__(self) -> None:
         '''
@@ -105,6 +106,18 @@ class ConfigAdapt:
             raise ForMoSAError(f" backend must be a string, got {type(self.backend)}")
         if self.backend not in _JOBLIB_BACKENDS:
             raise ForMoSAError(f" backend must be one of {_JOBLIB_BACKENDS}, got '{self.backend}'")
+
+        # Check reuse_identical_subgrids
+        if isinstance(self.reuse_identical_subgrids, str):
+            val_lower = self.reuse_identical_subgrids.lower()
+            if val_lower == "true":
+                self.reuse_identical_subgrids = True
+            elif val_lower == "false":
+                self.reuse_identical_subgrids = False
+            else:
+                raise ForMoSAError(f" reuse_identical_subgrids must be a boolean or 'true'/'false' string, got '{self.reuse_identical_subgrids}'")
+        elif not isinstance(self.reuse_identical_subgrids, bool):
+            raise ForMoSAError(f" reuse_identical_subgrids must be a boolean, got {type(self.reuse_identical_subgrids)}")
 
         # Coerce n_jobs from INI scalar strings before type checks.
         if isinstance(self.n_jobs, str):
@@ -1337,6 +1350,11 @@ class ConfigGenerator:
             "n_jobs": [
                 "    # Number of parallel jobs used during grid adaptation.",
                 "    # Format : -1 (use all available CPUs) or a positive integer (e.g. 4)",
+                "    # MOSAIC : No"
+            ],
+            "reuse_identical_subgrids": [
+                "    # Reuse an already adapted subgrid when another observation needs an identical adapted grid.",
+                "    # Format : True or False",
                 "    # MOSAIC : No"
             ]
         }
