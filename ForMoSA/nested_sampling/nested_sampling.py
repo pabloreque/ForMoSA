@@ -604,7 +604,7 @@ class NestedSampling(object):
         '''
 
         if len(free_values) != self.parameters.n_free_parameters:
-            raise ForMoSAError("Invalid free_values length", self.logger)
+            raise ForMoSAError(f"Invalid free_values length ({len(free_values)}. Expected {self.parameters.n_free_parameters})", self.logger)
 
         params = {}
         # Convert numpy array to list of Python floats to avoid numpy.float64 scalars
@@ -626,6 +626,10 @@ class NestedSampling(object):
             # Local parameters are included only if obs_index matches
             elif p.is_local and obs_index in p.obs_index:
                 params[p] = p.prior.value if p.is_fixed else next(free_iter)
+                
+            else:
+                if not p.is_fixed:
+                    next(free_iter)
 
         return ObservedParameters(params)
 
