@@ -1,5 +1,5 @@
-import ForMoSA.utils.spec as us
 from ForMoSA.core.errors import ForMoSAError
+import ForMoSA.utils.logL_functions as logL_functions
 from ForMoSA.observation.observation_base import Observation
 from ForMoSA.transform.observed import ObservedModel, ObservedParameters
 from ForMoSA.core.enums import ParameterKind, ObservationType, LogLikelihoodType
@@ -169,5 +169,10 @@ class PhotometricEffects:
 
         if len(observed_model.flux) != len(obs.flux):
             raise ForMoSAError(f' Wrong length for model: {len(observed_model.flux)}. Expected the same length as the observations: {len(obs.flux)}')
-        
-        return us.compute_loglike(obs.flux, observed_model.flux, obs.err, logL_type=logL_type)
+
+        # ======================
+        # Compute loglikelihood
+        # ======================
+
+        residuals = observed_model.residuals(obs.flux)
+        return logL_functions.logL_chi2(residuals, obs.err)
