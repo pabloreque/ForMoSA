@@ -106,3 +106,8 @@ AGENTS.md
 .code-review-graph/
 docs/superpowers/
 .superpowers/
+
+
+
+# ignore notes to compile by PPB
+paper/notes_to_compile.txt

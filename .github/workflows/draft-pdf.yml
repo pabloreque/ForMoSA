@@ -1,6 +1,10 @@
 name: Draft PDF
 on:
   push:
+    # Branch-restricted so a v* release tag pointing at a paper/ change never
+    # triggers this: EndBug/add-and-commit needs a real branch to push its
+    # auto-commit to, and tag refs leave the checkout in detached HEAD.
+    branches: [main, ForMoSA_class]
     paths:
       - paper/**
       - .github/workflows/draft-pdf.yml
@@ -32,3 +36,7 @@ jobs:
           message: '(auto) Paper PDF Draft'
           # This should be the path to the paper within your repo.
           add: 'paper/paper.pdf' # 'paper/*.pdf' to commit all PDFs in the paper directory
+          # The PDF build takes long enough that the Changelog workflow (triggered by
+          # the same push) usually commits and pushes to the branch first; without a
+          # pull+rebase here this step's push is rejected as non-fast-forward.
+          pull: '--rebase --autostash'

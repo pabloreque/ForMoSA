@@ -15,7 +15,7 @@ distributions on physical parameters.
 **Quick links:**
 :doc:`getting_started/index` |
 :doc:`tutorials/index` |
-:doc:`scaling/index` |
+:doc:`good_practices/index` |
 :doc:`api/index` |
 :doc:`whats_new`
 
@@ -123,7 +123,7 @@ Example Results
    installation
    getting_started/index
    tutorials/index
-   scaling/index
+   good_practices/index
    api/index
    whats_new
 
@@ -137,6 +137,10 @@ If you use ForMoSA in your research, please cite
 
 Version Track
 -------------
+
+For the full, per-commit history, see `CHANGELOG.md
+<https://github.com/exoAtmospheres/ForMoSA/blob/main/CHANGELOG.md>`_ (auto-generated
+on every push). The summary below covers major-version highlights only.
 
 - ``2.0.0`` Complete rewrite with a class-based API (``Analysis``), Python dataclass
   configuration, restructured package layout, automatic photometry filter retrieval,
